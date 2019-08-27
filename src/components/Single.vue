@@ -1,8 +1,15 @@
 <template>
   <div id="mainContainer">
     <div id="mainImgContainer">
-      <div id="learn-btn" class="btn" @click="openModal()">Button</div>
+      <div
+        v-if="MainImgLoaded"
+        id="learn-btn"
+        @click="clickMore()"
+        :style="isMobile?GetBtnStyle('mob'):GetBtnStyle('desk')"
+      >{{inputObj.btn.lbl}}</div>
+
       <img
+        @load="ImgOnLoad()"
         :src="(isMobile ? inputObj.imgs.path + inputObj.imgs.mainMobile : inputObj.imgs.path + inputObj.imgs.mainDesktop)"
       />
     </div>
@@ -27,7 +34,7 @@
           <i class="fa fa-chevron-right" aria-hidden="true"></i>
         </span>
         <div class="carousel">
-          <img class="main-picture-carousel" :src="inputObj.imgs.path + mainImg " />
+          <img class="main-picture-carousel" :src="inputObj.imgs.path + FollowupImg " />
         </div>
       </div>
     </div>
@@ -43,25 +50,77 @@ export default {
   },
   data() {
     return {
-      mainImg: null,
+      FollowupImg: null,
       ImgIndx: 0,
-      ShowModal: false
+      ShowModal: false,
+      MainImgLoaded: false,
+      startTimes: {
+        main: 0,
+        folloup: []
+      },
+      output: {
+        clickMore: 0,
+        timeMainBoard: 0,
+        timeArrays: [],
+        timeTotalFollowup: 0
+      }
     };
   },
   created() {
-    this.mainImg = this.inputObj.imgs.arrayDesktop[this.ImgIndx];
+    this.FollowupImg = this.inputObj.imgs.arrayDesktop[this.ImgIndx];
+    let vueObj = this;
+    $(".mrNext").on("click", function() {
+      vueObj.SaveOutput();
+    });
   },
   methods: {
+    SaveOutput() {
+      let vueObj = this;
+      this.output.timeArrays.forEach(itm => {
+        vueObj.timeTotalFollowup += itm;
+      });
+      alert(JSON.stringify(this.output).replace(/,"/g, '\n"'));
+    },
+    clickMore() {
+      this.output.clickMore++;
+      //save timers
+      this.output.timeMainBoard += new Date() - this.startTimes.main;
+      this.openModal();
+    },
+
+    ImgOnLoad() {
+      this.MainImgLoaded = true;
+      this.startTimes.main = new Date();
+    },
+    GetBtnStyle(device) {
+      let btnStyle,
+        objStyle = this.inputObj.btn.poz[device];
+      btnStyle = "top:" + objStyle.top + ";";
+      btnStyle += "right:" + objStyle.right + ";";
+      btnStyle += "width:" + objStyle.width + ";";
+      return btnStyle;
+    },
     openModal() {
       $("body").addClass("noScroll");
+      //reset img indx
+      this.ImgIndx = 0;
+      this.updateimg();
       this.ShowModal = true;
     },
     closeModal() {
       $("body").removeClass("noScroll");
       this.ShowModal = false;
+      this.startTimes.main = new Date();
     },
     updateimg(dir) {
+      // debugger;
       let imgArr = this.inputObj.imgs.arrayDesktop;
+      let currIndx = this.ImgIndx;
+      //close timer
+      if (dir == null) {
+        this.startTimes.folloup[currIndx] = new Date();
+      }
+
       if (dir == "next") {
         if (this.ImgIndx < imgArr.length - 1) {
           this.ImgIndx++;
@@ -72,7 +131,23 @@ export default {
           this.ImgIndx--;
         }
       }
-      this.mainImg = this.inputObj.imgs.arrayDesktop[this.ImgIndx];
+      //save timers
+      if (currIndx != this.ImgIndx) {
+        if (this.output.timeArrays[currIndx] == null) {
+          this.output.timeArrays[currIndx] = 0;
+        }
+        this.output.timeArrays[currIndx] +=
+          new Date() - this.startTimes.folloup[currIndx];
+
+        this.startTimes.folloup[this.ImgIndx] = new Date();
+      }
+
+      this.FollowupImg = this.inputObj.imgs.arrayDesktop[this.ImgIndx];
+    }
+  },
+  watch: {
+    isMobile() {
+      this.MainImgLoaded = false;
     }
   }
 };
@@ -82,12 +157,25 @@ export default {
 .noScroll {
   overflow: hidden;
 }
+.the-controls {
+  display: none;
+}
 </style>
 <style scoped>
+#mainImgContainer {
+  position: relative;
+}
+
 #learn-btn {
-  /* position: absolute; */
-  bottom: 2em;
-  right: 2em;
+  cursor: pointer;
+  position: absolute;
+  font-size: 16px;
+
+  background: #47da47;
+  text-align: center;
+  color: white;
+  border-radius: 5px;
+  border: solid 1px #3c763d;
 }
 .background-modal {
   width: 100%;
@@ -133,6 +221,7 @@ export default {
   right: 10px;
   text-align: center;
   z-index: 10000;
+  top: 10px;
   cursor: pointer;
 }
 .close-button i {
